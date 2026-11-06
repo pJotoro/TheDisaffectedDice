@@ -4,8 +4,8 @@ using UnityEngine.InputSystem;
 
 /*
  * Issues I'm noticing so far:
- * - The camera doesn't move with the player.
  * - There's no way to tell which side of the player you are looking at. This is obviously because we haven't applied any textures to the player yet.
+ * - I'm not doing anything to correct for rounding errors in camera movement.
  */
 
 public class PlayerController : MonoBehaviour
@@ -13,9 +13,13 @@ public class PlayerController : MonoBehaviour
     private InputAction moveAction;
 
     public float inputThreshold = 0.5f;
-    public float rotationSpeed = 90.0f; // measured in degrees per second
+    public float rotationSpeed; // measured in degrees per second
 
     private Vector3 lastPos;
+
+    private GameObject cameraObject;
+    private Vector3 cameraStartPos;
+    private Vector3 cameraMovementLeftover;
 
     enum State
     {
@@ -28,24 +32,26 @@ public class PlayerController : MonoBehaviour
     private State state;
     private float amountRotated = 0.0f;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         moveAction = InputSystem.actions.FindAction("Move");
         state = State.Free;
         lastPos = transform.position;
+        cameraObject = GameObject.Find("Camera");
+        Debug.Assert(cameraObject != null);
+        cameraStartPos = cameraObject.transform.position;
     }
 
-    // Update is called once per frame
     void Update()
     {
+        Vector3 posBeforeMovement = transform.position;
+
         Vector2 moveValue = moveAction.ReadValue<Vector2>();
         bool alreadyRotating = amountRotated > 0.0f;
         bool horizontalInput = Mathf.Abs(moveValue.x) >= inputThreshold;
         bool verticalInput = Mathf.Abs(moveValue.y) >= inputThreshold;
-
-        // If the player is attempting to move in two directions, then we don't move.
-        if (!alreadyRotating && (!horizontalInput || !verticalInput))
+        bool attemptingToMoveInTwoDirections = horizontalInput && verticalInput;
+        if (!alreadyRotating && !attemptingToMoveInTwoDirections)
         {
             Debug.Assert(state == State.Free);
             
@@ -89,16 +95,24 @@ public class PlayerController : MonoBehaviour
                 Move(transform.position - 0.5f * transform.forward - 0.5f * transform.up, transform.right, -rotationSpeed * Time.deltaTime, -Vector3.forward);
                 break;
         }
+
+        // We only move the camera by how much the player moved.
+        Vector3 posDiff = transform.position - posBeforeMovement;
+        posDiff.y = 0.0f; // We don't want the camera to move vertically.
+        cameraMovementLeftover += posDiff;
+        Vector3 cameraMovement = cameraMovementLeftover * Time.deltaTime;
+        cameraObject.transform.position = cameraObject.transform.position + cameraMovement; // For some reason, Translate screws up the y-position anyway.
+        cameraMovementLeftover -= cameraMovement;
+
     }
-    private const float FINAL_ROTATION = 90.0f;
 
     void Move(Vector3 point, Vector3 axis, float angle, Vector3 translation)
     {
         transform.RotateAround(point, axis, angle);
-        amountRotated += rotationSpeed * Time.deltaTime;
-        if (amountRotated >= FINAL_ROTATION)
+        amountRotated += Mathf.Abs(angle);
+        if (amountRotated >= 90.0f)
         {
-            transform.localPosition = lastPos + translation;
+            transform.position = lastPos + translation;
             transform.localRotation = Quaternion.identity;
 
             amountRotated = 0.0f;
