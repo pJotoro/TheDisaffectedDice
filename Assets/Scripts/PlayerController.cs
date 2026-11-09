@@ -2,12 +2,6 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/*
- * Issues I'm noticing so far:
- * - There's no way to tell which side of the player you are looking at. This is obviously because we haven't applied any textures to the player yet.
- * - I'm not doing anything to correct for rounding errors in camera movement.
- */
-
 public class PlayerController : MonoBehaviour
 {
     private InputAction moveAction;
@@ -16,6 +10,7 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed; // measured in degrees per second
 
     private Vector3 lastPos;
+    private Quaternion lastRotation;
 
     private GameObject cameraObject;
     private Vector3 cameraStartPos;
@@ -74,6 +69,7 @@ public class PlayerController : MonoBehaviour
 
             if (state != State.Free)
             {
+                lastRotation = transform.rotation;
                 lastPos = transform.position;
             }
         }
@@ -83,16 +79,16 @@ public class PlayerController : MonoBehaviour
             case State.Free:
                 break;
             case State.Left:
-                Move(transform.position - 0.5f * transform.right - 0.5f * transform.up, transform.forward, rotationSpeed * Time.deltaTime, -Vector3.right);
+                Move(transform.position - 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, rotationSpeed * Time.deltaTime, -Vector3.right);
                 break;
             case State.Right:
-                Move(transform.position + 0.5f * transform.right - 0.5f * transform.up, transform.forward, -rotationSpeed * Time.deltaTime, Vector3.right);
+                Move(transform.position + 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, -rotationSpeed * Time.deltaTime, Vector3.right);
                 break;
             case State.Up:
-                Move(transform.position + 0.5f * transform.forward - 0.5f * transform.up, transform.right, rotationSpeed * Time.deltaTime, Vector3.forward);
+                Move(transform.position + 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, rotationSpeed * Time.deltaTime, Vector3.forward);
                 break;
             case State.Down:
-                Move(transform.position - 0.5f * transform.forward - 0.5f * transform.up, transform.right, -rotationSpeed * Time.deltaTime, -Vector3.forward);
+                Move(transform.position - 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, -rotationSpeed * Time.deltaTime, -Vector3.forward);
                 break;
         }
 
@@ -112,8 +108,9 @@ public class PlayerController : MonoBehaviour
         amountRotated += Mathf.Abs(angle);
         if (amountRotated >= 90.0f)
         {
+            transform.rotation = lastRotation;
+            transform.RotateAround(point, axis, 90.0f*Mathf.Sign(angle));
             transform.position = lastPos + translation;
-            transform.localRotation = Quaternion.identity;
 
             amountRotated = 0.0f;
             state = State.Free;
