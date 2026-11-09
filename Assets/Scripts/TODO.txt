@@ -1,4 +1,8 @@
 There's no way to tell which "square" I'm on. This is obviously because there's no level yet, just a giant plane.
-When the dice rolls, it just happens in one linear motion. I think it would look much better if it used a cosine function or something.
-The way the dice moves is really jarring. Clearly, there is just some basic linear algebra mistake I'm making.
 I'm not doing anything to correct for rounding errors in camera movement.
+
+
+
+I have no idea what the right way to make a grid is in Unity. At the same time, I have the internet!
+So, I'll watch some videos and read some articles and take notes along the way.
+
