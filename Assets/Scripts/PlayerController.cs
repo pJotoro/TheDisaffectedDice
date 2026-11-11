@@ -79,16 +79,16 @@ public class PlayerController : MonoBehaviour
             case State.Free:
                 break;
             case State.Left:
-                Move(transform.position - 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, rotationSpeed * Time.deltaTime, -Vector3.right);
+                Move(transform.position - 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, rotationSpeed * Time.deltaTime, -Vector3.right*1.4f);
                 break;
             case State.Right:
-                Move(transform.position + 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, -rotationSpeed * Time.deltaTime, Vector3.right);
+                Move(transform.position + 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, -rotationSpeed * Time.deltaTime, Vector3.right * 1.4f);
                 break;
             case State.Up:
-                Move(transform.position + 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, rotationSpeed * Time.deltaTime, Vector3.forward);
+                Move(transform.position + 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, rotationSpeed * Time.deltaTime, Vector3.forward * 1.4f);
                 break;
             case State.Down:
-                Move(transform.position - 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, -rotationSpeed * Time.deltaTime, -Vector3.forward);
+                Move(transform.position - 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, -rotationSpeed * Time.deltaTime, -Vector3.forward * 1.4f);
                 break;
         }
 
