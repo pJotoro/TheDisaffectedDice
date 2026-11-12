@@ -1,3 +1,4 @@
+using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -7,14 +8,15 @@ public class PlayerController : MonoBehaviour
     private InputAction moveAction;
 
     public float inputThreshold = 0.5f;
-    public float rotationSpeed; // measured in degrees per second
+    public float rotationSpeed; // degrees per second
 
-    private Vector3 lastPos;
+    private Vector3 startPos; // local space
+    private int2 gridPos;
     private Quaternion lastRotation;
 
     private GameObject cameraObject;
-    private Vector3 cameraStartPos;
-    private Vector3 cameraMovementLeftover;
+    private Vector3 cameraStartPos; // world space
+    private Vector3 cameraMovementLeftover; // world space
 
     enum State
     {
@@ -27,11 +29,31 @@ public class PlayerController : MonoBehaviour
     private State state;
     private float amountRotated = 0.0f;
 
+    const float GRID_SIZE = 1.4f;
+
+    int2 GridPosFromLocalPos(Vector3 localPos)
+    {
+        int2 res;
+        res.x = (int)((localPos.x - startPos.x) / GRID_SIZE);
+        res.y = (int)((localPos.y - startPos.y) / GRID_SIZE);
+        return res;
+    }
+
+    Vector3 LocalPosFromGridPos(int2 gridPos)
+    {
+        Vector3 res;
+        res.x = (float)gridPos.x * GRID_SIZE + startPos.x;
+        res.y = startPos.y;
+        res.z = (float)gridPos.y * GRID_SIZE + startPos.y;
+        return res;
+    }
+
     void Start()
     {
         moveAction = InputSystem.actions.FindAction("Move");
         state = State.Free;
-        lastPos = transform.position;
+        startPos = transform.localPosition;
+        gridPos = GridPosFromLocalPos(startPos);
         cameraObject = GameObject.Find("Camera");
         Debug.Assert(cameraObject != null);
         cameraStartPos = cameraObject.transform.position;
@@ -49,7 +71,7 @@ public class PlayerController : MonoBehaviour
         if (!alreadyRotating && !attemptingToMoveInTwoDirections)
         {
             Debug.Assert(state == State.Free);
-            
+
             if (moveValue.x >= inputThreshold)
             {
                 state = State.Right;
@@ -70,7 +92,6 @@ public class PlayerController : MonoBehaviour
             if (state != State.Free)
             {
                 lastRotation = transform.rotation;
-                lastPos = transform.position;
             }
         }
 
@@ -79,16 +100,16 @@ public class PlayerController : MonoBehaviour
             case State.Free:
                 break;
             case State.Left:
-                Move(transform.position - 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, rotationSpeed * Time.deltaTime, -Vector3.right*1.4f);
+                Move(transform.position - GRID_SIZE/2.0f * Vector3.right - GRID_SIZE/2.0f * Vector3.up, Vector3.forward, rotationSpeed * Time.deltaTime, new int2(-1, 0));
                 break;
             case State.Right:
-                Move(transform.position + 0.7f * Vector3.right - 0.7f * Vector3.up, Vector3.forward, -rotationSpeed * Time.deltaTime, Vector3.right * 1.4f);
+                Move(transform.position + GRID_SIZE/2.0f * Vector3.right - GRID_SIZE/2.0f * Vector3.up, Vector3.forward, -rotationSpeed * Time.deltaTime, new int2(1, 0));
                 break;
             case State.Up:
-                Move(transform.position + 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, rotationSpeed * Time.deltaTime, Vector3.forward * 1.4f);
+                Move(transform.position + GRID_SIZE/2.0f * Vector3.forward - GRID_SIZE/2.0f * Vector3.up, Vector3.right, rotationSpeed * Time.deltaTime, new int2(0, 1));
                 break;
             case State.Down:
-                Move(transform.position - 0.7f * Vector3.forward - 0.7f * Vector3.up, Vector3.right, -rotationSpeed * Time.deltaTime, -Vector3.forward * 1.4f);
+                Move(transform.position - GRID_SIZE/2.0f * Vector3.forward - GRID_SIZE/2.0f * Vector3.up, Vector3.right, -rotationSpeed * Time.deltaTime, new int2(0, -1));
                 break;
         }
 
@@ -102,7 +123,7 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    void Move(Vector3 point, Vector3 axis, float angle, Vector3 translation)
+    void Move(Vector3 point, Vector3 axis, float angle, int2 translation)
     {
         transform.RotateAround(point, axis, angle);
         amountRotated += Mathf.Abs(angle);
@@ -110,7 +131,9 @@ public class PlayerController : MonoBehaviour
         {
             transform.rotation = lastRotation;
             transform.RotateAround(point, axis, 90.0f*Mathf.Sign(angle));
-            transform.position = lastPos + translation;
+
+            gridPos += translation;
+            transform.localPosition = LocalPosFromGridPos(gridPos);
 
             amountRotated = 0.0f;
             state = State.Free;
