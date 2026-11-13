@@ -103,6 +103,15 @@ public class PlayerController : MonoBehaviour
         {
             return unityTilemap.CellToLocal(cellPos);
         }
+        public bool TileExists(int row, int col)
+        {
+            if (row >= minPos.y && row <= maxPos.y && col >= minPos.x && col <= maxPos.x)
+            {
+                Tile tile = this[row, col];
+                return tile.val != -1;
+            }
+            return false;
+        }
     }
 
     void Start()
@@ -204,8 +213,11 @@ public class PlayerController : MonoBehaviour
             gridPos.y += ty;
             transform.localPosition = tilemap.CellToLocal(gridPos) + startPos;
 
-            Tile tile = tilemap[gridPos.y, gridPos.x];
-            Debug.Log($"{tile.val}");
+            if (!tilemap.TileExists(gridPos.y, gridPos.x))
+            {
+                transform.localPosition = startPos;
+                gridPos = tilemap.LocalToCell(transform.localPosition);
+            }
 
         }
     }
