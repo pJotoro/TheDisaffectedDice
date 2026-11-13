@@ -3,20 +3,38 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+using TextMeshPro = TMPro.TextMeshPro;
+using TileBase = UnityEngine.Tilemaps.TileBase;
+using UnityEngine.Rendering.Universal;
+using System;
+using TMPro.EditorUtilities;
+using UnityEditor.Tilemaps;
+
+// Assume unless stated otherwise that:
+// - Positions are in local space.
+// - Rotations are in degrees per second.
+
 public class PlayerController : MonoBehaviour
 {
     private InputAction moveAction;
 
     public float inputThreshold = 0.5f;
-    public float rotationSpeed; // degrees per second
+    public float rotationSpeed;
 
-    private Vector3 startPos; // local space
-    private int2 gridPos;
+    private Vector3 startPos;
+    private Vector3Int gridPos; // in grid space obviously
+
+    private Vector3 lastPos;
     private Quaternion lastRotation;
 
-    private GameObject cameraObject;
-    private Vector3 cameraStartPos; // world space
-    private Vector3 cameraMovementLeftover; // world space
+
+    private Camera theCamera;
+    private Vector3 cameraStartPos;
+    private Vector3 cameraMovementLeftover;
+
+    private Tilemap tilemap;
+
+    const float GRID_SIZE = 1.4f; // TODO: Should we just get this from the grid?
 
     enum State
     {
@@ -29,40 +47,81 @@ public class PlayerController : MonoBehaviour
     private State state;
     private float amountRotated = 0.0f;
 
-    const float GRID_SIZE = 1.4f;
-
-    int2 GridPosFromLocalPos(Vector3 localPos)
+    struct Tile
     {
-        int2 res;
-        res.x = (int)((localPos.x - startPos.x) / GRID_SIZE);
-        res.y = (int)((localPos.y - startPos.y) / GRID_SIZE);
-        return res;
+        public int val; // -1 means no tile, 0 means blank tile
     }
-
-    Vector3 LocalPosFromGridPos(int2 gridPos)
+    class Tilemap
     {
-        Vector3 res;
-        res.x = (float)gridPos.x * GRID_SIZE + startPos.x;
-        res.y = startPos.y;
-        res.z = (float)gridPos.y * GRID_SIZE + startPos.y;
-        return res;
+        private UnityEngine.Tilemaps.Tilemap unityTilemap;
+        private Tile[][] tiles;
+        public readonly Vector3Int minPos;
+        public readonly Vector3Int maxPos;
+        public Tilemap()
+        {
+            unityTilemap = GameObject.FindAnyObjectByType<UnityEngine.Tilemaps.Tilemap>();
+            Debug.Assert(unityTilemap != null);
+
+            foreach (Transform t in unityTilemap.transform)
+            {
+                Vector3Int cellPos = unityTilemap.LocalToCell(t.localPosition);
+                this.minPos = Vector3Int.Min(this.minPos, cellPos);
+                this.maxPos = Vector3Int.Max(this.maxPos, cellPos);
+            }
+            this.tiles = new Tile[this.maxPos.y - this.minPos.y + 1][];
+            for (int row = 0; row < this.maxPos.y - this.minPos.y + 1; row++)
+            {
+                tiles[row] = new Tile[this.maxPos.x - this.minPos.x + 1];
+                for (int col = 0; col < this.maxPos.x - this.minPos.x + 1; col++)
+                {
+                    tiles[row][col] = new Tile();
+                    tiles[row][col].val = -1;
+                }
+            }
+
+            foreach (Transform t in unityTilemap.transform)
+            {
+                Vector3Int cellPos = unityTilemap.LocalToCell(t.localPosition);
+
+                string text = t.transform.GetChild(0).GetComponent<TextMeshPro>().text;
+                int c = text[0];
+                int n = c - '0';
+                this[cellPos.y, cellPos.x].val = n;
+            }
+        }
+        public ref Tile this[int row, int col]
+        {
+            get { return ref tiles[row - minPos.y][col - minPos.x]; }
+        }
+
+        public Vector3Int LocalToCell(Vector3 localPos)
+        {
+            return unityTilemap.LocalToCell(localPos);
+        }
+
+        public Vector3 CellToLocal(Vector3Int cellPos)
+        {
+            return unityTilemap.CellToLocal(cellPos);
+        }
     }
 
     void Start()
     {
+        theCamera = GameObject.FindAnyObjectByType<Camera>();
+        Debug.Assert(theCamera != null);
+        cameraStartPos = theCamera.transform.localPosition;
+        
+        tilemap = new Tilemap();
+
         moveAction = InputSystem.actions.FindAction("Move");
         state = State.Free;
         startPos = transform.localPosition;
-        gridPos = GridPosFromLocalPos(startPos);
-        cameraObject = GameObject.Find("Camera");
-        Debug.Assert(cameraObject != null);
-        cameraStartPos = cameraObject.transform.position;
+        gridPos = tilemap.LocalToCell(transform.localPosition);
+
     }
 
     void Update()
     {
-        Vector3 posBeforeMovement = transform.position;
-
         Vector2 moveValue = moveAction.ReadValue<Vector2>();
         bool alreadyRotating = amountRotated > 0.0f;
         bool horizontalInput = Mathf.Abs(moveValue.x) >= inputThreshold;
@@ -91,52 +150,63 @@ public class PlayerController : MonoBehaviour
 
             if (state != State.Free)
             {
-                lastRotation = transform.rotation;
+                lastRotation = transform.localRotation;
+                lastPos = transform.localPosition;
             }
         }
+
+        Vector3 posBeforeMovement = transform.localPosition;
 
         switch (state)
         {
             case State.Free:
                 break;
             case State.Left:
-                Move(transform.position - GRID_SIZE/2.0f * Vector3.right - GRID_SIZE/2.0f * Vector3.up, Vector3.forward, rotationSpeed * Time.deltaTime, new int2(-1, 0));
+                Move(lastPos - GRID_SIZE/2.0f * Vector3.right - GRID_SIZE/2.0f * Vector3.up, Vector3.forward, rotationSpeed * Time.deltaTime, -1, 0);
                 break;
             case State.Right:
-                Move(transform.position + GRID_SIZE/2.0f * Vector3.right - GRID_SIZE/2.0f * Vector3.up, Vector3.forward, -rotationSpeed * Time.deltaTime, new int2(1, 0));
+                Move(lastPos + GRID_SIZE/2.0f * Vector3.right - GRID_SIZE/2.0f * Vector3.up, Vector3.forward, -rotationSpeed * Time.deltaTime, 1, 0);
                 break;
             case State.Up:
-                Move(transform.position + GRID_SIZE/2.0f * Vector3.forward - GRID_SIZE/2.0f * Vector3.up, Vector3.right, rotationSpeed * Time.deltaTime, new int2(0, 1));
+                Move(lastPos + GRID_SIZE/2.0f * Vector3.forward - GRID_SIZE/2.0f * Vector3.up, Vector3.right, rotationSpeed * Time.deltaTime, 0, 1);
                 break;
             case State.Down:
-                Move(transform.position - GRID_SIZE/2.0f * Vector3.forward - GRID_SIZE/2.0f * Vector3.up, Vector3.right, -rotationSpeed * Time.deltaTime, new int2(0, -1));
+                Move(lastPos - GRID_SIZE/2.0f * Vector3.forward - GRID_SIZE/2.0f * Vector3.up, Vector3.right, -rotationSpeed * Time.deltaTime, 0, -1);
                 break;
         }
 
         // We only move the camera by how much the player moved.
-        Vector3 posDiff = transform.position - posBeforeMovement;
+        Vector3 posDiff = transform.localPosition - posBeforeMovement;
         posDiff.y = 0.0f; // We don't want the camera to move vertically.
         cameraMovementLeftover += posDiff;
         Vector3 cameraMovement = cameraMovementLeftover * Time.deltaTime;
-        cameraObject.transform.position = cameraObject.transform.position + cameraMovement; // For some reason, Translate screws up the y-position anyway.
+        theCamera.transform.localPosition = theCamera.transform.localPosition + cameraMovement; // For some reason, Translate screws up the y-position anyway.
         cameraMovementLeftover -= cameraMovement;
-
     }
 
-    void Move(Vector3 point, Vector3 axis, float angle, int2 translation)
+    void Move(Vector3 point, Vector3 axis, float angle, int tx, int ty)
     {
         transform.RotateAround(point, axis, angle);
         amountRotated += Mathf.Abs(angle);
+
+        // land on new tile
         if (amountRotated >= 90.0f)
         {
-            transform.rotation = lastRotation;
-            transform.RotateAround(point, axis, 90.0f*Mathf.Sign(angle));
-
-            gridPos += translation;
-            transform.localPosition = LocalPosFromGridPos(gridPos);
-
-            amountRotated = 0.0f;
             state = State.Free;
+
+            // fix rotation to a multiple of 90 degrees
+            transform.localRotation = lastRotation;
+            transform.RotateAround(point, axis, 90.0f*Mathf.Sign(angle));
+            amountRotated = 0.0f;
+
+            // fix position to grid
+            gridPos.x += tx;
+            gridPos.y += ty;
+            transform.localPosition = tilemap.CellToLocal(gridPos) + startPos;
+
+            Tile tile = tilemap[gridPos.y, gridPos.x];
+            Debug.Log($"{tile.val}");
+
         }
     }
 }
