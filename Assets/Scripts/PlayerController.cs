@@ -217,6 +217,11 @@ public class PlayerController : MonoBehaviour
             {
                 transform.localPosition = startPos;
                 gridPos = tilemap.LocalToCell(transform.localPosition);
+            } 
+            else
+            {
+                Tile tile = tilemap[gridPos.y, gridPos.x];
+                
             }
 
         }
