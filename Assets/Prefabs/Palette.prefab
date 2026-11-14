@@ -183,7 +183,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2169302794171892310, guid: 40e226c618eca8445baff3b8df655673, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.7
+      value: -2.1
       objectReference: {fileID: 0}
     - target: {fileID: 2169302794171892310, guid: 40e226c618eca8445baff3b8df655673, type: 3}
       propertyPath: m_LocalPosition.y
@@ -223,23 +223,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2187097036862251701, guid: 40e226c618eca8445baff3b8df655673, type: 3}
       propertyPath: m_Name
-      value: TileOne
-      objectReference: {fileID: 0}
-    - target: {fileID: 5139992443179371067, guid: 40e226c618eca8445baff3b8df655673, type: 3}
-      propertyPath: m_DynamicOccludee
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5139992443179371067, guid: 40e226c618eca8445baff3b8df655673, type: 3}
-      propertyPath: m_LightProbeUsage
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5946526970512331954, guid: 40e226c618eca8445baff3b8df655673, type: 3}
-      propertyPath: m_DynamicOccludee
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5946526970512331954, guid: 40e226c618eca8445baff3b8df655673, type: 3}
-      propertyPath: m_LightProbeUsage
-      value: 0
+      value: Tile
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -267,7 +251,7 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2169302794171892310, guid: 40e226c618eca8445baff3b8df655673, type: 3}
   m_PrefabInstance: {fileID: 5109178042587183110}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &3008719584257797160
+--- !u!114 &7678825436832442525
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
