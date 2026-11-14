@@ -22,6 +22,7 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed;
 
     private Vector3 startPos;
+    private Quaternion startRotation;
     private Vector3Int gridPos; // in grid space obviously
 
     private Vector3 lastPos;
@@ -114,6 +115,13 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    void Awake()
+    {
+        startRotation = transform.localRotation;
+        startPos = transform.localPosition;
+        state = State.Free;
+    }
+
     void Start()
     {
         theCamera = GameObject.FindAnyObjectByType<Camera>();
@@ -123,10 +131,8 @@ public class PlayerController : MonoBehaviour
         tilemap = new Tilemap();
 
         moveAction = InputSystem.actions.FindAction("Move");
-        state = State.Free;
-        startPos = transform.localPosition;
         gridPos = tilemap.LocalToCell(transform.localPosition);
-
+        
     }
 
     void Update()
@@ -215,6 +221,7 @@ public class PlayerController : MonoBehaviour
 
             if (!tilemap.TileExists(gridPos.y, gridPos.x))
             {
+                transform.localRotation = startRotation;
                 transform.localPosition = startPos;
                 gridPos = tilemap.LocalToCell(transform.localPosition);
             } 
