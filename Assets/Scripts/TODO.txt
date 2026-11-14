@@ -2,10 +2,10 @@ Done:
 
 1. Figure out how to check which tile you are on.
 2. If you are not on a tile, die.
+3. If you are on a tile that doesn't match your number, die.
 
 Tasks I have left to do before submitting:
 
-3. If you are on a tile that doesn't match your number, die.
 4. Add the rest of the tiles (3 to 9).
 5. Add goal block. When you make it to that block, you win.
 

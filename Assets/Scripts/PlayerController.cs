@@ -115,11 +115,82 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    struct Sides
+    {
+        int top;
+        int bottom;
+        int left;
+        int right;
+        int front;
+        int back;
+
+        public void SetDefaults()
+        {
+            top = 1;
+            bottom = 6;
+            left = 3;
+            right = 4;
+            front = 5;
+            back = 2;
+        }
+
+        public void RotateLeft()
+        {
+            int tempRight = right;
+            right = bottom;
+            bottom = left;
+            left = top;
+            top = tempRight;
+        }
+
+        public void RotateRight()
+        {
+            int tempRight = right;
+            right = top;
+            top = left;
+            left = bottom;
+            bottom = tempRight;
+        }
+
+        public void RotateForward()
+        {
+            int tempFront = front;
+            front = top;
+            top = back;
+            back = bottom;
+            bottom = tempFront;
+        }
+
+        public void RotateBackward()
+        {
+            int tempFront = front;
+            front = bottom;
+            bottom = back;
+            back = top;
+            top = tempFront;
+        }
+
+        public int Val()
+        {
+            return top;
+        }
+    }
+    private Sides sides;
+
+    void RestartLevel()
+    {
+        transform.localRotation = startRotation;
+        transform.localPosition = startPos;
+        gridPos = tilemap.LocalToCell(transform.localPosition);
+        sides.SetDefaults();
+    }
+
     void Awake()
     {
         startRotation = transform.localRotation;
         startPos = transform.localPosition;
         state = State.Free;
+        sides.SetDefaults();
     }
 
     void Start()
@@ -219,16 +290,24 @@ public class PlayerController : MonoBehaviour
             gridPos.y += ty;
             transform.localPosition = tilemap.CellToLocal(gridPos) + startPos;
 
+            if (tx == -1) sides.RotateLeft();
+            else if (tx == +1) sides.RotateRight();
+            else if (ty == -1) sides.RotateBackward();
+            else if (ty == +1) sides.RotateForward();
+
+            Debug.Log($"{sides.Val()}");
+
             if (!tilemap.TileExists(gridPos.y, gridPos.x))
             {
-                transform.localRotation = startRotation;
-                transform.localPosition = startPos;
-                gridPos = tilemap.LocalToCell(transform.localPosition);
+                RestartLevel();
             } 
             else
             {
                 Tile tile = tilemap[gridPos.y, gridPos.x];
-                
+                if (sides.Val() != tile.val)
+                {
+                    RestartLevel();
+                }
             }
 
         }
